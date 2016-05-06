@@ -1,0 +1,16 @@
+package:
+  name: tempered_pf
+  version: 0.0.1
+
+source:
+  path: ..
+
+requirements:
+  build:
+    - python
+    - numpy
+    - dsge
+  run:
+    - python
+    - numpy
+    - dsge
