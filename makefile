@@ -16,7 +16,8 @@ endif
 FPP=fypp
 FRUIT=-I$(INC)/fruit -L$(LIB) -lfruit
 FLAP=-I$(INC)/flap -L$(LIB) -lflap
-FORTRESS=-I/home/eherbst/Dropbox/code/fortress -L/home/eherbst/Dropbox/code/fortress -lfortress
+FORTRESS=-I$(INC)/fortress -L$(LIB) -lfortress
+#FORTRESS=-I/home/eherbst/Dropbox/code/fortress -L/home/eherbst/Dropbox/code/fortress -lfortress
 
 %.o : %.f90
 	$(FPP) -DGFORTRAN $< $(notdir $(basename $<))_tmp.f90

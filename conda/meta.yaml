@@ -7,10 +7,6 @@ source:
 
 requirements:
   build:
-    - python
-    - numpy
-    - dsge
+    - fortress
   run:
-    - python
-    - numpy
-    - dsge
+    - fortress

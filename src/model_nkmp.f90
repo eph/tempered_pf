@@ -26,7 +26,7 @@ contains
     integer :: nobs, T, ns, npara, neps
 
     name = 'nkmp'
-    datafile = '/home/eherbst/Dropbox/SMCExtensions/DSGEModelExtensions/code/src/us.txt'
+    datafile = 'src/us.txt'
     
     nobs = 3
     T = 80

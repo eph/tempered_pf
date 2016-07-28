@@ -1,1 +1,2 @@
-python setup.py build && python setup.py install
+make tpf_driver_nkmp
+cp tpf_driver_nkmp $PREFIX/bin
