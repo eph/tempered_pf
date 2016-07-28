@@ -4,7 +4,7 @@ VPATH=.:$(SRC):$(TEST)
 
 FC=mpif90
 
-LOBJS=model_nkmp.o
+LOBJS=model_nkmp.o TemperedParticleFilter.o
 ifdef CONDA_BUILD
 LIB=$(PREFIX)/lib
 INC=$(PREFIX)/include
@@ -22,6 +22,9 @@ FORTRESS=-I/home/eherbst/Dropbox/code/fortress -L/home/eherbst/Dropbox/code/fort
 	$(FPP) -DGFORTRAN $< $(notdir $(basename $<))_tmp.f90
 	$(FC) $(FRUIT) $(FLAP) $(FORTRESS) -fPIC -c $(notdir $(basename $<)_tmp.f90) -o $(notdir $(basename $<)).o
 	rm $(notdir $(basename $<))_tmp.f90
+
+tpf_driver_nkmp: tpf_driver.f90 $(LOBJS)
+	$(FC) $^  $(FRUIT) $(FORTRESS) $(FLAP) -llapack -fopenmp -o $@ 
 
 test_driver: test_driver.f90 $(LOBJS) test_nkmp.o
 	$(FC) $^  $(FRUIT) $(FORTRESS) $(FLAP) -llapack  -o $@ 
