@@ -11,6 +11,7 @@ INC=$(PREFIX)/include
 else
 LIB=$(HOME)/anaconda3/lib
 INC=$(HOME)/anaconda3/include
+CONDA_BUILD=0
 endif
 
 FPP=fypp
@@ -20,9 +21,9 @@ FORTRESS=-I$(INC)/fortress -L$(LIB) -lfortress
 #FORTRESS=-I/home/eherbst/Dropbox/code/fortress -L/home/eherbst/Dropbox/code/fortress -lfortress
 
 %.o : %.f90
-	$(FPP) -DGFORTRAN $< $(notdir $(basename $<))_tmp.f90
+	$(FPP) -DCONDA_BUILD=$(CONDA_BUILD) -DGFORTRAN $< $(notdir $(basename $<))_tmp.f90
 	$(FC) $(FRUIT) $(FLAP) $(FORTRESS) -fPIC -c $(notdir $(basename $<)_tmp.f90) -o $(notdir $(basename $<)).o
-	rm $(notdir $(basename $<))_tmp.f90
+#rm $(notdir $(basename $<))_tmp.f90
 
 tpf_driver_nkmp: tpf_driver.f90 $(LOBJS)
 	$(FC) $^  $(FRUIT) $(FORTRESS) $(FLAP) -llapack -fopenmp -o $@ 

@@ -1,4 +1,6 @@
 module model_nkmp_t
+  use, intrinsic :: iso_fortran_env, only: wp => real64
+
 
   use gensys, only: do_gensys
   use fortress_bayesian_model_t, only: fortress_lgss_model
@@ -25,9 +27,16 @@ contains
     character(len=144) :: name, datafile
     integer :: nobs, T, ns, npara, neps
 
+    character(len=144) :: prefix
     name = 'nkmp'
+
+#:if CONDA_BUILD
+    call get_environment_variable('CONDA', prefix)
+    datafile = trim(adjustl(prefix))//'/include/tempered_pf/us.txt'
+    print*,'datafile',datafile
+#:else
     datafile = 'src/us.txt'
-    
+#:endif    
     nobs = 3
     T = 80
     ns = 11
