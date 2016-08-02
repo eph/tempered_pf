@@ -1,3 +1,4 @@
 *.o
 *.mod
 */.ipynb_checkpoints/
+notebooks/*
