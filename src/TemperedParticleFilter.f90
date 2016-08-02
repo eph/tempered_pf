@@ -71,7 +71,7 @@ contains
   end function new_TemperedParticleFilter
  
  
-  double precision function lik(ppf, para, rank, nproc, resolve)
+  double precision function lik(ppf, para, rank, nproc, resolve, avg_iterations)
     class(TemperedParticleFilter) :: ppf
  
     double precision, intent(in) :: para(ppf%m%npara)
@@ -80,7 +80,8 @@ contains
     integer, intent(in) :: nproc
  
     logical, optional, intent(in) :: resolve
- 
+    real(wp), optional, intent(out) :: avg_iterations
+    
     logical :: converged, resolve_opt
  
     type(fortress_particles) :: old_local, old_copy, old_foreign, new_local, alt_foreign, alt_copy
@@ -385,6 +386,7 @@ contains
        old_local = new_local
  
       end do
+      if (present(avg_iterations)) avg_iterations = total_stages*1.0d0 / ppf%m%T
       !print*,'number of loops = ', total_stages*1.0d0 / ppf%m%T
     end function lik
  

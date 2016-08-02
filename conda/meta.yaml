@@ -8,5 +8,7 @@ source:
 requirements:
   build:
     - fortress
+    - json-fortran
   run:
     - fortress
+    - json-fortran

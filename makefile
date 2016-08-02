@@ -18,6 +18,7 @@ FPP=fypp
 FRUIT=-I$(INC)/fruit -L$(LIB) -lfruit
 FLAP=-I$(INC)/flap -L$(LIB) -lflap
 FORTRESS=-I$(INC)/fortress -L$(LIB) -lfortress
+JSON=-I$(INC)/json-fortran -L$(LIB)/json-fortran -ljsonfortran
 #FORTRESS=-I/home/eherbst/Dropbox/code/fortress -L/home/eherbst/Dropbox/code/fortress -lfortress
 
 %.o : %.f90
@@ -26,7 +27,7 @@ FORTRESS=-I$(INC)/fortress -L$(LIB) -lfortress
 #rm $(notdir $(basename $<))_tmp.f90
 
 tpf_driver_nkmp: tpf_driver.f90 $(LOBJS)
-	$(FC) $^  $(FRUIT) $(FORTRESS) $(FLAP) -llapack -fopenmp -o $@ 
+	$(FC) $^  $(FRUIT) $(FORTRESS) $(FLAP) $(JSON) -llapack -fopenmp -o $@ 
 
 test_driver: test_driver.f90 $(LOBJS) test_nkmp.o
 	$(FC) $^  $(FRUIT) $(FORTRESS) $(FLAP) -llapack  -o $@ 

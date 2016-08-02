@@ -1,7 +1,8 @@
-Companion Code for "Tempered Particle Filtering"
+Companion Code for _Tempered Particle Filtering_
 ================================================
 by Ed Herbst and Frank Schorfheide
 
+Click [here](#) to read the latest version of the draft.
 
 Installation
 ------------
@@ -16,7 +17,7 @@ conda install -c eherbst tempered_pf
 Conda will install executables `tpf_everything` `tpf_driver_nkmp`,
 `tpf_driver_sw`, `tpf_figures_and_tables`.
 
-### Installation by Hand.
+### Installation by hand
 
 This project is written principally in Fortran, and so requires a
 fortran compiler.  It uses the `fortress` library (available
@@ -33,7 +34,8 @@ make tpf
 This will result in the 4 executables being placed in the `bin/` directory.
 
 
-
-``` make ``` Usage ----- usage instructions here
+Usage 
+----- 
+usage instructions here
 
 

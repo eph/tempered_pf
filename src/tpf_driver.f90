@@ -1,7 +1,14 @@
 program tpf_driver
+  use, intrinsic :: iso_fortran_env, only: wp => real64
+
+
   
   use model_nkmp_t, only: model
   use class_TemperedParticleFilter, only: TemperedParticleFilter
+  use fortress_util, only: read_array_from_file
+  use flap, only: command_line_interface
+
+  use json_module, only: json_core, json_value
 
   use omp_lib
 
@@ -12,8 +19,8 @@ program tpf_driver
   type(TemperedParticleFilter) :: ppf
 
   logical :: convergence, use_bootstrap
-  double precision :: l, truth, rstar
-
+  double precision :: truth, rstar
+  real(wp), allocatable :: pf_liks(:), avg_iterations(:)
   integer :: rank, nproc, mpierror, i, nthreads, npart, nsim, nintmh
 
   integer :: time0, time1, rate
@@ -21,92 +28,117 @@ program tpf_driver
   double precision, allocatable :: para(:)
   
   character(len=144) :: output_dir, arg, crstar, cnpart, para_file
-  character(len=:), allocatable :: output_file
+
+  character(len=144) :: output_file
+  character(len=4) :: model_choice
+  character(len=20) :: sample_choice
+
+  type(command_line_interface) :: cli
+  integer :: error
+
+  type(json_core) :: json
+  type(json_value), pointer :: p, inp, op
+
+  integer :: omp_nthreads, omp_nprocs
+
 
   use_bootstrap = .false.
-  npart = 4000
-  nsim = 100
-  rstar = 2.0d0
-  para_file = 'p0.txt'
-  crstar = '2.0'
-  cnpart = '40000'
-  output_dir = '.'
-  nintmh = 1
-  do i = 1, command_argument_count()
 
-     call get_command_argument(i, arg)
+  call cli%init(progname='Tempered Particle Filtering Example', &
+       authors='Ed Herbst')
+  call cli%add(switch='--model', switch_ab='-m', help='Model', &
+       required=.false.,act='store',def='nkmp', choices='nkmp,sw', error=error)
+  call cli%add(switch='--sample', switch_ab='-s', help='Sample', &
+       required=.false.,act='store',def='great_moderation', &
+       choices='great_moderation,great_recession',error=error)
+  call cli%add(switch='--npart', switch_ab='-n', help='Number of particles', &
+       required=.false.,act='store',def='4000',error=error)
+  call cli%add(switch='--pmsv', switch_ab='-p0', help='Parameter File', &
+       required=.false.,act='store',def='p0.txt',error=error)
+  call cli%add(switch='--nintmh',switch_ab='-mh', help='Number of intermediate MH steps', &
+       required=.false.,act='store',def='1',error=error)
+  call cli%add(switch='--rstar', switch_ab='-r', help='Ineffeciency Ration (for TPF)', &
+       required=.false.,act='store',def='2.0',error=error)
+  call cli%add(switch='--nsim', help='Ineffeciency Ration (for TPF)', &
+       required=.false.,act='store',def='100',error=error)
+  call cli%add(switch='--output-file', switch_ab='-o', help='Output File', &
+       required=.false.,act='store',def='output.json',error=error)
 
-     select case(arg)
 
-     case ('--output_dir', '-odir')
-        call get_command_argument(i+1, output_dir)
-     case ('--bootstrap')
-        use_bootstrap = .true.
-     case ('--parameter-file','-p0')
-        call get_command_argument(i+1, para_file)
-     case ('--npart', '-m')
-        call get_command_argument(i+1, arg)
-        cnpart = arg
-        read(arg, '(i10)') npart
-     case ('--nsim', '-n')
-        call get_command_argument(i+1, arg)
-        read(arg, '(i10)') nsim
-     case ('--rstar', '-r')
-        call get_command_argument(i+1, arg)
-        crstar = arg
-        read(arg, '(f16.8)') rstar
-     case ('--nintmh', '-mh')
-        call get_command_argument(i+1, arg)
-        read(arg, '(i10)') nintmh
-     end select
-  end do
+  call cli%parse()
 
-  if (use_bootstrap) then
-     output_file = trim(adjustl(output_dir))//'/bootstrap_npart_'//trim(adjustl(cnpart))//'.txt'
-  else
-     output_file = trim(adjustl(output_dir))//'/tempered_npart_'//trim(adjustl(cnpart))//'_rstar_'//trim(adjustl(crstar))//'.txt'
-  end if
-  print*,output_file
+  call cli%get(switch='--model',val=model_choice,error=error) ; if (error/=0) stop
+  call cli%get(switch='--sample',val=sample_choice,error=error) ; if (error/=0) stop
+  call cli%get(switch='--npart',val=npart,error=error) ; if (error/=0) stop
+  call cli%get(switch='--pmsv',val=para_file,error=error) ; if (error/=0) stop
+  call cli%get(switch='--nintmh',val=nintmh,error=error) ; if (error/=0) stop
+  call cli%get(switch='--rstar',val=rstar,error=error) ; if (error /= 0) stop
+  call cli%get(switch='--nsim',val=nsim,error=error) ; if (error /= 0) stop
+  call cli%get(switch='--output-file', val=output_file, error=error) ; if (error /= 0) stop
 
-  print*,'omp_get_num_procs(nthreads) = ', omp_get_num_procs()
-  print*,'omp_get_max_threads(nthreads) = ', omp_get_max_threads()
-  call omp_set_num_threads(4)
-  print*,'omp_get_num_threads(nthreads) = ', omp_get_num_threads()
+  omp_nthreads = omp_get_num_procs()
+  omp_nprocs = omp_get_max_threads()
 
-  !$OMP PARALLEL DO PRIVATE(i)
-  do i = 1, 5
-     print*, i, omp_get_thread_num()
-  end do
-  !$END OMP PARALLEL DO
+
   m = model()
   rank=0; nproc=1
 
+
+  call json%create_object(p, '')
+  call json%create_object(inp, 'inputs')
+  call json%add(p, inp)
+  
+  call json%add(inp, 'model', model_choice)
+  call json%add(inp, 'sample', sample_choice)
+  call json%add(inp, 'nsim', nsim)
+  call json%add(inp, 'npart', npart)
+  call json%add(inp, 'omp_nthreads', omp_nthreads)
+  call json%add(inp, 'omp_nprocs', omp_nprocs)
+
+  if (use_bootstrap) then
+     call json%add(inp, 'filter', 'bootstrap')
+     call json%add(inp, 'nintmh', 1)
+  else
+     call json%add(inp, 'filter', 'tpf')
+     call json%add(inp, 'rstar', rstar)
+     call json%add(inp, 'nintmh', nintmh)
+  end if
+
+
   ppf = TemperedParticleFilter(m, npart=npart, nproc=nproc, rank=rank, seed=rank, rstar=rstar)
-
+  
   allocate(para(m%npara))
-  open(2, file=para_file, action='read')
-  do i = 1, m%npara
-     read(2,*) para(i)
-     print*, 'para(',i,') = ', para(i)
-  end do
-
+  call read_array_from_file(para_file, para)
+  call json%add(inp, 'para', para)
 
   truth = m%lik(para)
   if (rank==0) print*,'exact likelihood:', truth
-  call system_clock(count_rate=rate)
 
 
+  allocate(pf_liks(nsim), avg_iterations(nsim))
+  call system_clock(count_rate=rate) ;
   call system_clock(time0)
-  open(126,file=output_file,action='write')
   do i = 1, nsim
-     l = ppf%lik(para, rank=rank, nproc=nproc)
-     if (rank==0) print*, 'loglik = ', l
-     write(126,*) l - truth
+     pf_liks(i) = ppf%lik(para, rank=rank, nproc=nproc, avg_iterations=avg_iterations(i))
+     if (rank==0) print*, 'loglik = ', pf_liks(i)
   end do
-  close(126)
   call system_clock(time1)
   print*,'average time = ', ( (time1-time0)/real(rate) / i)
-  deallocate(para)
+
+
+  call json%create_object(op, 'output')
+  call json%add(p, op)
+
+  call json%add(op, 'truth', truth)
+  call json%add(op, 'average_time', ( (time1-time0)/dble(rate) / i))
+  call json%add(op, 'likhat', pf_liks)
+  call json%add(op, 'avg_iterations', avg_iterations)
+
+  nullify(inp, op)
+  call json%print(p, output_file)
+
+  call json%destroy(p)
+  deallocate(para, pf_liks, avg_iterations)
 
 
 end program
