@@ -1,6 +1,6 @@
 SRC=src
 TEST=tests
-VPATH=.:$(SRC):$(TEST)
+VPATH=.:$(SRC):$(SRC)/nkmp:$(SRC)/sw:$(TEST)
 
 FC=mpif90
 
@@ -24,9 +24,9 @@ JSON=-I$(INC)/json-fortran -L$(LIB)/json-fortran -ljsonfortran
 %.o : %.f90
 	$(FPP) -DCONDA_BUILD=$(CONDA_BUILD) -DGFORTRAN $< $(notdir $(basename $<))_tmp.f90
 	$(FC) $(FRUIT) $(FLAP) $(FORTRESS) -fPIC -c $(notdir $(basename $<)_tmp.f90) -o $(notdir $(basename $<)).o
-#rm $(notdir $(basename $<))_tmp.f90
+	rm $(notdir $(basename $<))_tmp.f90
 
-tpf_driver_nkmp: tpf_driver.f90 $(LOBJS)
+tpf_driver: tpf_driver.f90 $(LOBJS)
 	$(FC) $^  $(FRUIT) $(FORTRESS) $(FLAP) $(JSON) -llapack -fopenmp -o $@ 
 
 test_driver: test_driver.f90 $(LOBJS) test_nkmp.o
