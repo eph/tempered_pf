@@ -47,7 +47,7 @@ program tpf_driver
   integer :: omp_nthreads, omp_nprocs
 
 
-  use_bootstrap = .false.
+
 
   call cli%init(progname='Tempered Particle Filtering Example', &
        authors='Ed Herbst')
@@ -68,10 +68,10 @@ program tpf_driver
        required=.false.,act='store',def='100',error=error)
   call cli%add(switch='--seed', help='random seed to use', &
        required=.false.,act='store',def='1848',error=error)
-
   call cli%add(switch='--output-file', switch_ab='-o', help='Output File', &
        required=.false.,act='store',def='output.json',error=error)
-
+  call cli%add(switch='--bootstrap',help='Use the bootstrap particle filter.', &
+       required=.false.,act='store_true', def='.false.', error=error)
 
   call cli%parse()
 
@@ -84,6 +84,7 @@ program tpf_driver
   call cli%get(switch='--nsim',val=nsim,error=error) ; if (error /= 0) stop
   call cli%get(switch='--output-file', val=output_file, error=error) ; if (error /= 0) stop
   call cli%get(switch='--seed', val=seed, error=error) ; if (error /= 0) stop
+  call cli%get(switch='--bootstrap', val=use_bootstrap, error=error) ; if (error /= 0) stop
   omp_nthreads = omp_get_num_procs()
   omp_nprocs = omp_get_max_threads()
 
@@ -131,7 +132,8 @@ program tpf_driver
 
 
   tpf = TemperedParticleFilter(m, npart=npart, nproc=nproc, rank=rank, seed=seed, rstar=rstar)
-  
+  if (use_bootstrap) tpf%bootstrap = .true.
+
   allocate(para(m%npara))
   call read_array_from_file(para_file, para)
   call json%add(inp, 'para', para)
