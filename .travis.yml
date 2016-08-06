@@ -24,7 +24,8 @@ install:
   - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION 
   - source activate test-environment
 
-  - conda --add channels conda-forge eherbst
+  - conda config --add channels conda-forge 
+  - conda config --add channels eherbst
   - conda build conda
   - conda install tempered_pf --use-local
 
