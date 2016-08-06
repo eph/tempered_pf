@@ -49,8 +49,12 @@ program tpf_driver
 
 
 
-  call cli%init(progname='Tempered Particle Filtering Example', &
-       authors='Ed Herbst')
+  call cli%init(progname='tpf_driver', &
+       authors='Ed Herbst', &
+       description='Program to highlight the tempered particle filter.')
+  call cli%add(switch='--bootstrap',help='Use the bootstrap particle filter instead of TPF', &
+       required=.false.,act='store_true', def='.false.', error=error)
+
   call cli%add(switch='--model', switch_ab='-m', help='Model', &
        required=.false.,act='store',def='nkmp', choices='nkmp,sw', error=error)
   call cli%add(switch='--sample', switch_ab='-s', help='Sample', &
@@ -62,16 +66,14 @@ program tpf_driver
        required=.false.,act='store',def='p0.txt',error=error)
   call cli%add(switch='--nintmh',switch_ab='-mh', help='Number of intermediate MH steps (for TPF)', &
        required=.false.,act='store',def='1',error=error)
-  call cli%add(switch='--rstar', switch_ab='-r', help='Inefficiency Ration (for TPF)', &
+  call cli%add(switch='--rstar', switch_ab='-r', help='Inefficiency Ratio (for TPF)', &
        required=.false.,act='store',def='2.0',error=error)
-  call cli%add(switch='--nsim', help='Inefficiency Ration (for TPF)', &
+  call cli%add(switch='--nsim', help='Number of repetitions', &
        required=.false.,act='store',def='100',error=error)
   call cli%add(switch='--seed', help='random seed to use', &
        required=.false.,act='store',def='1848',error=error)
   call cli%add(switch='--output-file', switch_ab='-o', help='Output File', &
        required=.false.,act='store',def='output.json',error=error)
-  call cli%add(switch='--bootstrap',help='Use the bootstrap particle filter.', &
-       required=.false.,act='store_true', def='.false.', error=error)
 
   call cli%parse()
 
