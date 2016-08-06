@@ -33,4 +33,4 @@ install:
   #- conda build conda
 
 script:
-  - pwd
+  - tpf_driver --help
