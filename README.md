@@ -14,7 +14,7 @@ packaging tool which helps disseminate scientific software.
 At the command prompt, type: 
 
 ```
-conda --add channels conda-forge eherbst 
+conda config --add channels conda-forge eherbst 
 conda install tempered_pf
 ```
 
