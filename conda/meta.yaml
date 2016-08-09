@@ -9,7 +9,10 @@ requirements:
   build:
     - fortress
     - json-fortran
+    - gcc
     - fypp
   run:
     - fortress
     - json-fortran
+    - libgcc
+    - libgfortran

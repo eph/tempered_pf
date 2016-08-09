@@ -349,7 +349,7 @@ contains
  
                 !if (sum(acpt)/(1.0d0*ppf%nlocalpart)>0.40d0) scale = scale*1.1d0
                 !if (sum(acpt)/(1.0d0*ppf%nlocalpart)<0.40d0) scale = scale*0.9d0
-                acpt = 0.95d0 + 0.10d0 * exp(20.0d0(acpt-0.40d0)) / (1.0d0 + exp(20.0d0(acpt-0.40d0)))
+                acpt = 0.95d0 + 0.10d0 * exp(20.0d0*(acpt-0.40d0)) / (1.0d0 + exp(20.0d0*(acpt-0.40d0)))
                 !print*,scale
              end do
              ! if (t==24) then

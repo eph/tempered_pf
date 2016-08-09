@@ -18,20 +18,13 @@ install:
   - conda install -q anaconda-client conda-build
   # Useful for debugging any issues with conda
   - conda info -a
-
-  # Replace dep1 dep2 ... with your dependencies
-
   - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION 
   - source activate test-environment
   - conda config --add channels conda-forge 
-  - conda config --add channels salford_systems
   - conda config --add channels eherbst
+  - gfortran --help
   - conda build conda
   - conda install tempered_pf --use-local
-
-  #- git clone https://github.com/eph/tempered_pf.git
-  #- cd tempered_pf
-  #- conda build conda
 
 script:
   - tpf_driver --help
