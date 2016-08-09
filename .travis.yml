@@ -22,7 +22,6 @@ install:
   - source activate test-environment
   - conda config --add channels conda-forge 
   - conda config --add channels eherbst
-  - gfortran --help
   - conda build conda
   - conda install tempered_pf --use-local
 
