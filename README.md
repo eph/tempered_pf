@@ -2,7 +2,7 @@ Companion Code for _Tempered Particle Filtering_
 ================================================
 by Ed Herbst and Frank Schorfheide
 
-Click [here](#) to read the latest version of the draft.
+Click [here](http://sites.sas.upenn.edu/schorf/files/temperedparticlefilter_v9_0.pdf) to read the latest version of the draft.
 
 Installation 
 ------------ 
@@ -34,7 +34,7 @@ fortran compiler.  It uses the `fortress` library (available
 make tpf
 ```
 
-This will result in the 4 executables being placed in the `bin/` directory.
+This will result an executable `tpf_driver.`
 
 
 Usage 
@@ -43,10 +43,16 @@ The main program is tpf driver, which runs all of the calculations
 reported in the paper.  
 
 ```
-eherbst@thnkpd:~$ tpf_driver --help
-usage: Tempered Particle Filtering Example  [--model value] [--sample value] [--npart value] [--pmsv value] [--nintmh value] [--rstar value] [--nsim value] [--output-file value] [--help] [--version]
+eherbst@thnkpd:~$ ./tpf_driver --help
+usage: tpf_driver  [--bootstrap] [--model value] [--sample value] [--npart value] [--pmsv value] [--nintmh value] [--rstar value] [--nsim value] [--seed value] [--output-file value] [--save-states] [--help] [--version]
+
+Program to highlight the tempered particle filter.
+
 
 Optional switches:
+   --bootstrap
+    default value .false.
+    Use the bootstrap particle filter instead of TPF
    --model value, -m value, value in: `nkmp,sw`
     default value nkmp
     Model
@@ -61,15 +67,21 @@ Optional switches:
     Parameter File
    --nintmh value, -mh value
     default value 1
-    Number of intermediate MH steps
+    Number of intermediate MH steps (for TPF)
    --rstar value, -r value
     default value 2.0
-    Ineffeciency Ration (for TPF)
+    Inefficiency Ratio (for TPF)
    --nsim value
     default value 100
-    Ineffeciency Ration (for TPF)
+    Number of repetitions
+   --seed value
+    default value 1848
+    random seed to use
    --output-file value, -o value
     default value output.json
+    Output File
+   --save-states
+    default value .false.
     Output File
    --help, -h
     Print this help message
