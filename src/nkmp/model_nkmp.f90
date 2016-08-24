@@ -27,12 +27,14 @@ contains
     character(len=144) :: name, datafile
     integer :: nobs, T, ns, npara, neps
 
-    character(len=144) :: prefix
+    character(len=:), allocatable :: prefix
     name = 'nkmp'
 
 #:if CONDA_BUILD
-    call get_environment_variable('CONDA', prefix)
-    datafile = trim(adjustl(prefix))//'/include/tempered_pf/nkmp/us.txt'
+    !call get_environment_variable('SRC_DIR', prefix)
+    !print*,'PREFIX', prefix
+    !datafile = trim(adjustl(prefix))//'/include/tempered_pf/nkmp/us.txt'
+    datafile = '/home/ubuntu/anaconda3/include/tempered_pf/nkmp/us.txt'
     print*,'datafile',datafile
 #:else
     datafile = 'src/nkmp/us.txt'

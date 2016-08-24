@@ -4,7 +4,7 @@ module model_sw_t
 
   use gensys, only: do_gensys
   use fortress_bayesian_model_t, only: fortress_lgss_model
-  
+
   implicit none
 
   type, public, extends(fortress_lgss_model) :: sw_model 
@@ -570,7 +570,7 @@ contains
 
 
 
-
+    
     call do_gensys(self%TT, self%CC, self%RR, fmat, fwt, ywt, gev, eu, loose, self%GAM0, self%GAM1, self%C, self%PSI, self%PPI, DIV)
 ! 
 

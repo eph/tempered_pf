@@ -1,5 +1,5 @@
 program tpf_driver
-  use, intrinsic :: iso_fortran_env, only: wp => real64
+  use, intrinsic :: iso_fortran_env, only: output_unit, wp => real64
 
 
   use flap, only: command_line_interface
@@ -21,10 +21,10 @@ program tpf_driver
   class(fortress_lgss_model), allocatable :: m 
   type(TemperedParticleFilter) :: tpf
 
-  logical :: convergence, use_bootstrap
+  logical :: convergence, use_bootstrap, save_states
   double precision :: truth, rstar
   real(wp), allocatable :: pf_liks(:), avg_iterations(:)
-  integer :: rank, nproc, mpierror, i, nthreads, npart, nsim, nintmh, seed
+  integer :: rank, nproc, i, nthreads, npart, nsim, nintmh, seed
 
   integer :: time0, time1, rate
 
@@ -40,13 +40,14 @@ program tpf_driver
 
   type(command_line_interface) :: cli
   integer :: error
+  logical :: found
 
   type(json_core) :: json
-  type(json_value), pointer :: p, inp, op
+  type(json_value), pointer :: p, inp, op, simi_p, node
 
   integer :: omp_nthreads, omp_nprocs
 
-
+  character(len=4) :: simi
 
 
   call cli%init(progname='tpf_driver', &
@@ -54,7 +55,6 @@ program tpf_driver
        description='Program to highlight the tempered particle filter.')
   call cli%add(switch='--bootstrap',help='Use the bootstrap particle filter instead of TPF', &
        required=.false.,act='store_true', def='.false.', error=error)
-
   call cli%add(switch='--model', switch_ab='-m', help='Model', &
        required=.false.,act='store',def='nkmp', choices='nkmp,sw', error=error)
   call cli%add(switch='--sample', switch_ab='-s', help='Sample', &
@@ -74,6 +74,8 @@ program tpf_driver
        required=.false.,act='store',def='1848',error=error)
   call cli%add(switch='--output-file', switch_ab='-o', help='Output File', &
        required=.false.,act='store',def='output.json',error=error)
+  call cli%add(switch='--save-states', help='Output File', &
+       required=.false.,act='store_true',def='.false.',error=error)
 
   call cli%parse()
 
@@ -87,9 +89,9 @@ program tpf_driver
   call cli%get(switch='--output-file', val=output_file, error=error) ; if (error /= 0) stop
   call cli%get(switch='--seed', val=seed, error=error) ; if (error /= 0) stop
   call cli%get(switch='--bootstrap', val=use_bootstrap, error=error) ; if (error /= 0) stop
-  omp_nthreads = omp_get_num_procs()
-  omp_nprocs = omp_get_max_threads()
+  call cli%get(switch='--save-states', val=save_states, error=error) ; if (error /= 0) stop
 
+  print*,'maximum number of threads', omp_nprocs, omp_nthreads
   
   if (model_choice=='nkmp') then
      allocate(m, source=nkmp_model())
@@ -108,9 +110,6 @@ program tpf_driver
   else
      allocate(m, source=sw_model())
   end if
-
-  rank=0; nproc=1
-
 
   call json%create_object(p, '')
   call json%create_object(inp, 'inputs')
@@ -133,30 +132,53 @@ program tpf_driver
   end if
 
 
-  tpf = TemperedParticleFilter(m, npart=npart, nproc=nproc, rank=rank, seed=seed, rstar=rstar)
+  tpf = TemperedParticleFilter(m, npart=npart, seed=seed, rstar=rstar)
   if (use_bootstrap) tpf%bootstrap = .true.
 
   allocate(para(m%npara))
   call read_array_from_file(para_file, para)
   call json%add(inp, 'para', para)
 
+  call json%create_object(op, 'output')
+  call json%add(p, op)
+
   truth = m%lik(para)
-  if (rank==0) print*,'exact likelihood:', truth
+  print*,'exact likelihood:', truth
 
 
   allocate(pf_liks(nsim), avg_iterations(nsim))
-  call system_clock(count_rate=rate) ;
+  call system_clock(count_rate=rate) 
   call system_clock(time0)
   do i = 1, nsim
-     pf_liks(i) = tpf%lik(para, rank=rank, nproc=nproc, avg_iterations=avg_iterations(i))
-     if (rank==0) print*, 'loglik = ', pf_liks(i)
+
+     if (save_states) then
+        write(simi, '(I3.3)') i
+        call json%create_object(simi_p, simi)
+        call json%add(op, simi_p)
+        pf_liks(i) = tpf%lik(para, avg_iterations=avg_iterations(i), json_states=simi_p)
+
+
+        ! only save the whole particle swarm for 1 run
+        if (i > 1) then
+           call json%get_child(simi_p, 'fcst_states', node)
+           call json%remove(node, destroy=.true.)
+
+           call json%get_child(simi_p, 'update_states', node)
+           call json%remove(node, destroy=.true.)
+
+           call json%get_child(simi_p, 'tempered_states', node)
+           call json%remove(node, destroy=.true.)
+        end if
+        nullify(simi_p)
+     else
+        pf_liks(i) = tpf%lik(para, avg_iterations=avg_iterations(i))
+     end if
+     print*, 'loglik = ', pf_liks(i)
   end do
   call system_clock(time1)
   print*,'average time = ', ( (time1-time0)/real(rate) / i)
 
 
-  call json%create_object(op, 'output')
-  call json%add(p, op)
 
   call json%add(op, 'truth', truth)
   call json%add(op, 'average_time', ( (time1-time0)/dble(rate) / i))

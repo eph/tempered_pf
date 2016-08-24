@@ -9,10 +9,27 @@ requirements:
   build:
     - fortress
     - json-fortran
-    - gcc
     - fypp
+    - fruitpy
+    - fruit
+
+
   run:
     - fortress
+    - fruitpy
     - json-fortran
-    - libgcc
-    - libgfortran
+
+
+build:
+  detect_binary_files_with_prefix: True
+  
+
+# test:
+#   requires:
+#     - tempered_pf
+#   commands:
+#     - tpf_driver --help
+
+#  imports:
+    #- FRUIT
+    

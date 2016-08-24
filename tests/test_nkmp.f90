@@ -9,7 +9,7 @@ contains
   
   subroutine test_nkmp_1
     
-    use model_nkmp_t, only: model
+    use model_nkmp_t, only: model => nkmp_model
 
     type(model) :: nkmp
 

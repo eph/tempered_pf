@@ -10,9 +10,12 @@ parser = argparse.ArgumentParser(description="Create Figures and "
 parser.add_argument('simulations', metavar='sims', type=str, nargs='+',
                     help='The JSON files with simulation output from tpf_driver.')
 
+parser.add_argument('--output', action='store', type=str, default='',
+                    help='The filename for figure output (default: no filename, plot interactively)')
+# parser.add_argument('--figure-details', action='store', default=None,
+#                     help='Flag to call additional (hardcoded) figure details')
 
 args = parser.parse_args()
-
 print(args.simulations)
 
 
@@ -26,14 +29,13 @@ for sim_file in args.simulations:
     sim['output']['bias_series'] = bias_series
     sim['output']['bias1'] = bias_series.mean()
     sim['output']['std1'] = bias_series.std()
-    sim['output']['bias2'] = (np.exp(bias_series)-1.0).mean()
+    sim['output']['bias2'] = (np.exp(bias_series)).mean()
 
     if sim['inputs']['filter'] == 'bootstrap':
         sim['inputs']['name'] = 'BSPF' 
     else:
-        sim['inputs']['name'] = ('TPF$(r^*='+'{:1.0f}'.format(sim['inputs']['rstar'])
-                                 + ')$')
-
+        tpf_string = 'TPF$(r^*={:1.0f})$'
+        sim['inputs']['name'] = tpf_string.format(sim['inputs']['rstar'])
                                  
                                  
     sims.append(sim)
@@ -41,6 +43,7 @@ for sim_file in args.simulations:
 
 fl = '{: 7.3f}'.format
 inl = '{: 7d}'.format
+
 rows = [['                     '] + [sim['inputs']['name'] for sim in sims],
         ['Number of Particles  '] + [inl(sim['inputs']['npart']) for sim in sims],
         ['Number of Repetitions'] + [inl(sim['inputs']['nsim']) for sim in sims],
@@ -53,10 +56,9 @@ rows = [['                     '] + [sim['inputs']['name'] for sim in sims],
 
 
 table = ' \\\\ \n'.join([' & '.join(r) for r in rows]) + ' \\\\'
-
 print(table)
 
 
 
 
-#from args import simulations
+
