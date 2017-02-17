@@ -14,11 +14,12 @@ packaging tool which helps disseminate scientific software.
 At the command prompt, type: 
 
 ```
-conda config --add channels conda-forge eherbst 
+conda config --add channels conda-forge 
+conda config --add channels eherbst 
 conda install tempered_pf
 ```
 
-Conda will install executables `tpf_everything` `tpf_driver`, `tpf_figures_and_tables`.
+Conda will install executables `tpf_everything`, `tpf_driver`, `tpf_figures_and_tables`.
 
 ### Installation by hand
 

@@ -31,20 +31,23 @@ contains
     name = 'nkmp'
 
 #:if CONDA_BUILD
-    !call get_environment_variable('SRC_DIR', prefix)
-    !print*,'PREFIX', prefix
-    !datafile = trim(adjustl(prefix))//'/include/tempered_pf/nkmp/us.txt'
-    datafile = '/home/ubuntu/anaconda3/include/tempered_pf/nkmp/us.txt'
-    print*,'datafile',datafile
+    call get_environment_variable('CONDA_PREFIX', prefix)
+    print*,'PREFIX', prefix
+    datafile = '${os.environ['CONDA_PREFIX']}$/include/tempered_pf/nkmp/us.txt'
+    !datafile = trim(datafile)
+    !datafile = '/home/ubuntu/anaconda3/include/tempered_pf/nkmp/us.txt'
+    !print*,datafile 
+    !datafile = './src/nkmp/us.txt' 
 #:else
-    datafile = 'src/nkmp/us.txt'
+    !datafile = ' ${os.environ['CONDA_PREFIX']}$/include/tempered_pf/nkmp/us.txt'
+    datafile = './src/nkmp/us.txt'
 #:endif    
     nobs = 3
     T = 80
     ns = 11
     npara = 13
     neps = 3
-    
+
     call m%construct_model(name, datafile, npara, nobs, T, ns, neps)
 
     m%p0 = [2.0d0,0.5d0,1.5d0,0.25d0,0.7d0,0.5d0,0.3d0,4.0d0,2.0d0,0.5d0,0.1d0,0.1d0,0.1d0]

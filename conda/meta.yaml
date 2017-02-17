@@ -5,6 +5,15 @@ package:
 source:
   path: ..
 
+build:
+  script_env:
+    - CONDA_PREFIX
+
+  detect_binay_files_with_prefix: true
+
+  binary_has_prefix_files:
+    - ../tpf_driver
+    
 requirements:
   build:
     - fortress
