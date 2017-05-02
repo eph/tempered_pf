@@ -30,13 +30,8 @@ contains
     character(len=144) :: prefix
     name = 'sw'
 
-#:if CONDA_BUILD
-    call get_environment_variable('CONDA', prefix)
-    datafile = trim(adjustl(prefix))//'/include/tempered_pf/sw/YY.txt'
-    print*,'datafile',datafile
-#:else
     datafile = 'src/sw/YY.txt'
-#:endif    
+
     nobs = 7
     T = 156
     ns = 53

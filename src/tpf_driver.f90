@@ -57,7 +57,7 @@ program tpf_driver
        authors='Ed Herbst', &
        description='Program to illustrate the tempered particle filter.')
   call cli%add(switch='--type',help='Use the bootstrap particle filter instead of TPF', &
-       required=.false.,act='store', def='tempered', choices='tempered,boostrap,resample,opt,aux', error=error)
+       required=.false.,act='store', def='tempered', choices='tempered,bootstrap,resample,opt,aux', error=error)
   call cli%add(switch='--model', switch_ab='-m', help='Model', &
        required=.false.,act='store',def='nkmp', choices='nkmp,sw', error=error)
   call cli%add(switch='--sample', switch_ab='-s', help='Sample', &
@@ -175,7 +175,7 @@ program tpf_driver
            end if
         nullify(simi_p)
      else
-        if ((type=='tpf').or.(type=='bootstrap').or.(type=='resample')) then 
+        if ((type=='tempered').or.(type=='bootstrap').or.(type=='resample')) then 
            pf_liks(i) = tpf%lik(para, avg_iterations=avg_iterations(i))
         else
            call m%system_matrices(para, error)

@@ -33,7 +33,7 @@ contains
     name = 'nkmp'
 
     prefix = placeholder
-    datafile = trim(prefix)//'/include/tempered_pf/nkmp/us.txt'
+    datafile = './include/tempered_pf/nkmp/us.txt'
 
     nobs = 3
     T = 80
