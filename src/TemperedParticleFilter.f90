@@ -16,14 +16,14 @@ module class_TemperedParticleFilter
      integer :: npart = 1000
      integer :: nproc = 1
      integer :: nintmh = 1
- 
+
      integer :: initialization_T = 1
  
      integer :: JMAX = 20
  
      double precision :: rstar = 2.0d0
  
-     logical :: bootstrap = .false.
+     character(len=144) :: type
      class(fortress_ss_model), allocatable :: m
      type(fortress_random) :: rng
  
@@ -262,13 +262,11 @@ contains
           !$OMP END PARALLEL DO
 
           ! ! now do the normalization
-
-
           ! ! turn incremental weights into unnormalized kernal
           wt_kernel = incwt
           ess0 = psi_ess(psi_min, psi_old, wt_kernel, ppf%npart, ppf%rstar)
           ess1 = psi_ess(1.0d0, psi_old, wt_kernel, ppf%npart, ppf%rstar)
-          if ((ess1 < 0.0d0) .or. (ppf%bootstrap .eqv. .true.)) then
+          if ((ess1 < 0.0d0) .or. (ppf%type=='bootstrap') .or. (ppf%type=='resample')) then
              psi_new = 1.0d0
              converged = .true.
           elseif (ess0 > 0.0d0) then
@@ -339,7 +337,7 @@ contains
           !------------------------------------------------------------
           ! mutation
           !------------------------------------------------------------
-          if (ppf%bootstrap .eqv. .false.) then
+          if (ppf%type /= 'bootstrap') then
              nintmh = ppf%nintmh
 
              !scale = 0.3d0
@@ -443,95 +441,13 @@ contains
          new_weight = exp((psi - psi_old)*incwt) !* old_weight
          new_weight2 = exp(2.0d0*(psi - psi_old)*incwt) !* old_weight
       end if
-      !new_weight = new_weight / ( 1.0d0/npart * sum(new_weight))
-      !psi_ess = npart / (1.0 / npart * sum(new_weight**2))
+
       a1 = sum(new_weight2) / npart
       a2 = (sum(new_weight) / npart)**2
       fx = (a1/a2) - r
  
- 
-      !da1 = 2.0d0*sum(incwt*new_weight2) / npart
-      !da2 = ( 2.0d0 * sum(new_weight) / npart ) * (sum(incwt*new_weight) / npart)
-      !print *, psi, psi_old, fx
-      !stop
- 
- 
-      !dfx = (da1*a2 - a1*da2) / a2**2
-      !dfx = dfx / (a1/a2)
-     
- 
- 
-      !if (isnan(phi_ess)) stop
- 
     end function psi_ess
  
- 
-    double precision function newton(lb, ub, tol, psi_old, incwt, npart, rstar, transform)
- 
- 
-      integer, intent(in) :: npart
-      double precision, intent(in) :: lb, ub, tol, psi_old, incwt(npart), rstar
- 
-      logical, intent(in), optional :: transform
- 
-      logical :: bisection_converged
-      integer :: bisection_loops
- 
-      double precision :: x1, essx
- 
-             ! call psi_ess(x1, psi_old, wt_kernel, ppf%npart, ppf%rstar, essx, dessx)
-             ! !dessx = dessx * ( exp(-x1_trans/scale)*(ub-lb)/(scale*(1.0d0+exp(-x1_trans/scale)))**2 )
-             ! !print*,dessx, exp(-x1_trans), exp(-x1_trans)*(ub-lb)/(1.0d0-exp(-x1_trans))**2
-             
-             ! brent_converged = abs(essx) < tol
-             ! brent_loops = 1
-             ! do while (.not. brent_converged)
-             !    !x1_trans = x1_trans - essx / dessx
-             !    !x1 = lb + (ub - lb) / (1.0d0 + exp(-x1_trans/scale))
-             !    x1 = x1 - essx/dessx
-             !    ! if (isnan(x1_trans) .and. (essx / dessx < 0)) then
-             !    !    x1 = ub - 0.0001d0
-             !    !    x1_trans = scale*log( (x1 - lb) / (ub - x1) )
-             !    ! end if
-             !    in_bounds = (x1 <= 1.0d0) .and. (x1 >= psi_min)
-             !    !print*,in_bounds, x1, essx
-             !    do while (.not. in_bounds )
-             !       ! print*,brent_loops, x1_trans, x1, t
-             !       ! open(69,file='TESTWEIGHTS.txt',action='write')
-             !       ! do i = 1, ppf%npart
-             !       !    write(69,*) wt_kernel(i)
-             !       ! end do
-             !       ! print*,'phi_old', phi_old
-             !       ! x1 = (ub+phi_old)/2.0d0
-             !       ! call psi_ess(x1, psi_old, wt_kernel, ppf%npart, ppf%rstar, essx, dessx)
-             !       ! print*,essx
-             !       ! print*,dessx
-             !       ! close(69)
-             !       !stop
- 
-             !       ! !x1_trans = x1_trans - 0.2 * essx / dessx
-             !       ! x1 = lb + (ub - lb) / (1.0d0 + exp(-x1_trans/scale))
-             !       ! call psi_ess(1.0d0, psi_old, wt_kernel, ppf%npart, ppf%rstar, ess1, dessx)
-             !       ! print*,'bad guess', x1, psi_min, ess1
-             !       ! dessx = dessx * ( exp(-x1_trans/scale)*(ub-lb)/(scale*(1.0d0+exp(-x1_trans/scale)))**
- 
-             !    end do
-             !    print*, 'guessing ', x1, essx
-             !    !print*,essx, dessx
-             !    ! if (essx > 0.0) then
-             !    !    ub = x1
-             !    !    x1 = (x1 + lb) / 2.0d0
-             !    ! else
-             !    !    lb = x1
-             !    !    x1 = (x1 + ub) / 2.0d0
-             !    ! endif
-             !    call psi_ess(x1, psi_old, wt_kernel, ppf%npart, ppf%rstar, essx, dessx)
-             !    !dessx = dessx * ( exp(-x1_trans/scale)*(ub-lb)/(scale*(1.0d0+exp(-x1_trans/scale)))**2 )
-             !    !dessx = dessx * ( exp(-x1_trans)*(ub-lb)/(1.0d0-exp(-x1_trans))**2 )
-             !    !print*,brent_loops,x1,essx, lb, ub
-             !    brent_converged = abs(essx) < tol
- 
-    end function newton
     double precision function bisection(lb1, ub1, tol, psi_old, incwt, npart, rstar)
  
       integer, intent(in) :: npart

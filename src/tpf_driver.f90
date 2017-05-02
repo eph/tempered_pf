@@ -1,7 +1,6 @@
 program tpf_driver
   use, intrinsic :: iso_fortran_env, only: output_unit, wp => real64
 
-
   use flap, only: command_line_interface
   use json_module, only: json_core, json_value
 
@@ -9,6 +8,7 @@ program tpf_driver
   use fortress_bayesian_model_t, only: fortress_lgss_model
 
   use class_TemperedParticleFilter, only: TemperedParticleFilter
+  use particle_filter, only: part_filter
 
   use model_nkmp_t, only: nkmp_model
   use model_sw_t, only: sw_model
@@ -17,23 +17,27 @@ program tpf_driver
 
   implicit none
 
+  character(len=400), parameter :: placeholder = '${os.getenv('CONDA_PREFIX', './')}$'
+
   class(fortress_lgss_model), allocatable :: m 
   type(TemperedParticleFilter) :: tpf
 
-  logical :: convergence, use_bootstrap, save_states
+  logical :: convergence, save_states
   double precision :: truth, rstar
   real(wp), allocatable :: pf_liks(:), avg_iterations(:)
-  integer :: rank, nproc, i, nthreads, npart, nsim, nintmh, seed
+  integer :: rank, nproc, i, nthreads, npart, nsim, nintmh, seed, i0
 
-  integer :: time0, time1, rate, i0
+  integer :: time0, time1, rate, filt
 
-  double precision, allocatable :: para(:)
+  double precision, allocatable :: para(:), incloglh(:), filtered_states(:,:)
+  
 
   character(len=144) :: output_dir, arg, crstar, cnpart
-  character(len=:), allocatable :: para_file
   character(len=144) :: output_file, prefix
+  character(len=255) :: para_file, base_dir
+
   character(len=4) :: model_choice
-  character(len=20) :: sample_choice
+  character(len=20) :: sample_choice, type
   character(len=:), allocatable :: datafile
 
 
@@ -52,8 +56,8 @@ program tpf_driver
   call cli%init(progname='tpf_driver', &
        authors='Ed Herbst', &
        description='Program to illustrate the tempered particle filter.')
-  call cli%add(switch='--bootstrap',help='Use the bootstrap particle filter instead of TPF', &
-       required=.false.,act='store_true', def='.false.', error=error)
+  call cli%add(switch='--type',help='Use the bootstrap particle filter instead of TPF', &
+       required=.false.,act='store', def='tempered', choices='tempered,boostrap,resample,opt,aux', error=error)
   call cli%add(switch='--model', switch_ab='-m', help='Model', &
        required=.false.,act='store',def='nkmp', choices='nkmp,sw', error=error)
   call cli%add(switch='--sample', switch_ab='-s', help='Sample', &
@@ -62,7 +66,7 @@ program tpf_driver
   call cli%add(switch='--npart', switch_ab='-n', help='Number of particles', &
        required=.false.,act='store',def='4000',error=error)
   call cli%add(switch='--pmsv', switch_ab='-p0', help='Parameter File', &
-       required=.false.,act='store', def='none' , error=error)
+       required=.false.,act='store', def='0' , error=error)
   call cli%add(switch='--nintmh',switch_ab='-mh', help='Number of intermediate MH steps (for TPF)', &
        required=.false.,act='store',def='1',error=error)
   call cli%add(switch='--rstar', switch_ab='-r', help='Inefficiency Ratio (for TPF)', &
@@ -87,21 +91,16 @@ program tpf_driver
   call cli%get(switch='--nsim',val=nsim,error=error) ; if (error /= 0) stop
   call cli%get(switch='--output-file', val=output_file, error=error) ; if (error /= 0) stop
   call cli%get(switch='--seed', val=seed, error=error) ; if (error /= 0) stop
-  call cli%get(switch='--bootstrap', val=use_bootstrap, error=error) ; if (error /= 0) stop
+  call cli%get(switch='--type', val=type, error=error) ; if (error /= 0) stop
   call cli%get(switch='--save-states', val=save_states, error=error) ; if (error /= 0) stop
 
-  !print*,'maximum number of threads', omp_nprocs, omp_nthreads
+
+  base_dir = trim(placeholder)//'/include/tempered_pf/                                          '
   if (model_choice=='nkmp') then
      allocate(m, source=nkmp_model())
 
      if (sample_choice=='great_recession') then
-#:if CONDA_BUILD
-        call get_environment_variable('CONDA', prefix)
-        m%datafile = trim(adjustl(prefix))//'/include/tempered_pf/nkmp/yy2003Q1_2013Q4.txt'
-        !fdkalf;asdfja;lsf
-#:else
-        m%datafile = 'src/nkmp/yy2003Q1_2013Q4.txt'
-#:endif
+        m%datafile = 'include/tempered_pf/nkmp/yy2003Q1_2013Q4.txt'
         deallocate(m%yy)
         m%T = 44
         call m%read_data
@@ -111,14 +110,14 @@ program tpf_driver
   end if
 
   allocate(para(m%npara))
-!  if (para_file=='none') then
-  para_file = "${os.environ['CONDA_PREFIX']}$/include/tempered_pf/nkmp/p0.txt"
-  i0 = index(para_file, '.txt')
-!  para_file = 'p0.txt'
-     call read_array_from_file(para_file(1:i0-5), para)
-!  else
 
-!  end if
+  if (para_file=='0') then
+     para_file = 'include/tempered_pf/'//trim(adjustl(model_choice))//'/p0.txt'
+  elseif (para_file=='1') then
+     para_file = 'include/tempered_pf/'//trim(adjustl(model_choice))//'/p1.txt'
+  end if
+
+  call read_array_from_file(trim(para_file), para)
 
 
   call json%create_object(p, '')
@@ -132,18 +131,9 @@ program tpf_driver
   call json%add(inp, 'omp_nthreads', omp_nthreads)
   call json%add(inp, 'omp_nprocs', omp_nprocs)
 
-  if (use_bootstrap) then
-     call json%add(inp, 'filter', 'bootstrap')
-     call json%add(inp, 'nintmh', 1)
-  else
-     call json%add(inp, 'filter', 'tpf')
-     call json%add(inp, 'rstar', rstar)
-     call json%add(inp, 'nintmh', nintmh)
-  end if
-
-
-  tpf = TemperedParticleFilter(m, npart=npart, seed=seed, rstar=rstar)
-  if (use_bootstrap) tpf%bootstrap = .true.
+  call json%add(inp, 'filter', type)
+  call json%add(inp, 'rstar', rstar)
+  call json%add(inp, 'nintmh', nintmh)
 
   call json%add(inp, 'para', para)
 
@@ -152,6 +142,12 @@ program tpf_driver
 
   truth = m%lik(para)
   print*,'exact likelihood:', truth
+
+
+
+
+  tpf = TemperedParticleFilter(m, npart=npart, seed=seed, rstar=rstar)
+  tpf%type = type
 
 
   allocate(pf_liks(nsim), avg_iterations(nsim))
@@ -163,8 +159,8 @@ program tpf_driver
         write(simi, '(I3.3)') i
         call json%create_object(simi_p, simi)
         call json%add(op, simi_p)
-        pf_liks(i) = tpf%lik(para, avg_iterations=avg_iterations(i), json_states=simi_p)
 
+        pf_liks(i) = tpf%lik(para, avg_iterations=avg_iterations(i), json_states=simi_p)
 
         ! only save the whole particle swarm for 1 run
         if (i > 1) then
@@ -176,16 +172,34 @@ program tpf_driver
 
            call json%get_child(simi_p, 'tempered_states', node)
            call json%remove(node, destroy=.true.)
-        end if
+           end if
         nullify(simi_p)
      else
-        pf_liks(i) = tpf%lik(para, avg_iterations=avg_iterations(i))
+        if ((type=='tpf').or.(type=='bootstrap').or.(type=='resample')) then 
+           pf_liks(i) = tpf%lik(para, avg_iterations=avg_iterations(i))
+        else
+           call m%system_matrices(para, error)
+           allocate(incloglh(m%T), filtered_states(m%T, m%ns))
+           associate(yy => m%yy, TT => m%TT, RR => m%RR, QQ => m%QQ, &
+                DD => m%DD, ZZ => m%ZZ, HH => m%HH, ny => m%nobs, &
+                ns => m%ns, neps => m%neps, t0 => m%t0)
+             if (type=='opt') then
+                filt = 1
+             else
+                filt = 0
+             end if
+             call part_filter(yy, TT, RR, QQ, DD, ZZ, HH, 0, npart, filt, 2, &
+                  ny, m%T, neps, ns, incloglh, filtered_states, seed+i-1, 0)
+
+             pf_liks(i) = sum(incloglh)
+             deallocate(incloglh, filtered_states)
+           end associate
+        end if
      end if
      print*, 'loglik = ', pf_liks(i)
   end do
   call system_clock(time1)
   print*,'average time = ', ( (time1-time0)/real(rate) / i)
-
 
 
   call json%add(op, 'truth', truth)

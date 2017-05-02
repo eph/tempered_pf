@@ -7,6 +7,8 @@ module model_nkmp_t
   
   implicit none
 
+  character(len=255), parameter :: placeholder = '${os.getenv('CONDA_PREFIX', '.')}$'
+
   type, public, extends(fortress_lgss_model) :: nkmp_model 
 
      integer :: neta  = 4
@@ -24,31 +26,21 @@ contains
 
   type(nkmp_model) function new_nkmp_model() result(m)
 
-    character(len=144) :: name, datafile
+    character(len=544) :: name, datafile
     integer :: nobs, T, ns, npara, neps
 
-    character(len=:), allocatable :: prefix
+    character(len=255) :: prefix
     name = 'nkmp'
 
-#:if CONDA_BUILD
-    call get_environment_variable('CONDA_PREFIX', prefix)
-    print*,'PREFIX', prefix
-    datafile = '${os.environ['CONDA_PREFIX']}$/include/tempered_pf/nkmp/us.txt'
-    !datafile = trim(datafile)
-    !datafile = '/home/ubuntu/anaconda3/include/tempered_pf/nkmp/us.txt'
-    !print*,datafile 
-    !datafile = './src/nkmp/us.txt' 
-#:else
-    !datafile = ' ${os.environ['CONDA_PREFIX']}$/include/tempered_pf/nkmp/us.txt'
-    datafile = './src/nkmp/us.txt'
-#:endif    
+    prefix = placeholder
+    datafile = trim(prefix)//'/include/tempered_pf/nkmp/us.txt'
+
     nobs = 3
     T = 80
     ns = 11
     npara = 13
     neps = 3
-
-    call m%construct_model(name, datafile, npara, nobs, T, ns, neps)
+    call m%construct_lgss_model_noprior(name, datafile, npara, nobs, T, ns, neps)
 
     m%p0 = [2.0d0,0.5d0,1.5d0,0.25d0,0.7d0,0.5d0,0.3d0,4.0d0,2.0d0,0.5d0,0.1d0,0.1d0,0.1d0]
 

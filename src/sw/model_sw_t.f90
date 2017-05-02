@@ -43,7 +43,7 @@ contains
     npara = 35
     neps = 7
     
-    call m%construct_model(name, datafile, npara, nobs, T, ns, neps)
+    call m%construct_lgss_model_noprior(name, datafile, npara, nobs, T, ns, neps)
 
     m%p0 = [0.1657d0,0.7869d0,0.5509d0,0.1901d0,1.3333d0,1.6064d0,5.7606d0, &
          0.72d0,0.7d0,1.9d0,0.65d0,0.57d0,0.3d0,0.5462d0,2.0443d0,0.8103d0, &

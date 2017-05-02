@@ -6,9 +6,6 @@ source:
   path: ..
 
 build:
-  script_env:
-    - CONDA_PREFIX
-
   detect_binay_files_with_prefix: true
 
   binary_has_prefix_files:
@@ -27,17 +24,22 @@ requirements:
     - fortress
     - fruitpy
     - json-fortran
-
-
+    - openblas
+    - mpich2
+    
 build:
   detect_binary_files_with_prefix: True
-  
 
-# test:
-#   requires:
-#     - tempered_pf
-#   commands:
-#     - tpf_driver --help
+  binary_has_prefix_files:
+    - ../tpf_driver
+    - ../bin/tpf_driver
+    - tpf_driver
+test:
+  requires:
+    - tempered_pf
+  commands:
+    - pwd
+    - tpf_driver --nsim 1
 
 #  imports:
     #- FRUIT
