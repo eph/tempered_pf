@@ -29,7 +29,7 @@ for sim_file in args.simulations:
     sim['output']['bias_series'] = bias_series
     sim['output']['bias1'] = bias_series.mean()
     sim['output']['std1'] = bias_series.std()
-    sim['output']['bias2'] = (np.exp(bias_series)).mean()
+    sim['output']['bias2'] = (np.exp(bias_series)-1).mean()
 
     if sim['inputs']['filter'] == 'bootstrap':
         sim['inputs']['name'] = 'BSPF' 
