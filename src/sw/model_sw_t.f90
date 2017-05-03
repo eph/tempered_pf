@@ -30,7 +30,7 @@ contains
     character(len=144) :: prefix
     name = 'sw'
 
-    datafile = 'src/sw/YY.txt'
+    datafile = './include/tempered_pf/sw/YY.txt'
 
     nobs = 7
     T = 156

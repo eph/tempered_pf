@@ -45,7 +45,7 @@ for sim_file in args.simulations:
     sims.append(sim)
     
 
-fl = '{: 7.3f}'.format
+fl = '{: 7.2f}'.format
 inl = '{: 7d}'.format
 
 rows = [['                                 '] + [sim['inputs']['name'] for sim in sims],
