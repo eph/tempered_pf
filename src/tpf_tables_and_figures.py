@@ -27,6 +27,8 @@ for sim_file in args.simulations:
 
     bias_series = p.Series(sim['output']['likhat']) - sim['output']['truth']
     sim['output']['bias_series'] = bias_series
+    sim['output']['mse'] = (bias_series).mean()**2 + (p.Series(sim['output']['likhat'])).var()
+    sim['output']['var'] = (p.Series(sim['output']['likhat'])).var()
     sim['output']['bias1'] = bias_series.mean()
     sim['output']['std1'] = bias_series.std()
     sim['output']['bias2'] = (np.exp(bias_series)-1).mean()
@@ -51,9 +53,11 @@ inl = '{: 7d}'.format
 rows = [['                                 '] + [sim['inputs']['name'] for sim in sims],
         ['Number of Particles              '] + [inl(sim['inputs']['npart']) for sim in sims],
         ['Number of Repetitions            '] + [inl(sim['inputs']['nsim']) for sim in sims],
+        ['MSE                              '] + [fl(sim['output']['mse']) for sim in sims],
         ['Bias $\hat{\Delta}_1$            '] + [fl(sim['output']['bias1']) for sim in sims],
-        ['StdD $\hat{\Delta}_1$            '] + [fl(sim['output']['std1']) for sim in sims],
-        ['Bias $\hat{\Delta}_2$            '] + [fl(sim['output']['bias2']) for sim in sims],
+        ['Variance                         '] + [fl(sim['output']['var']) for sim in sims],
+#        ['StdD $\hat{\Delta}_1$            '] + [fl(sim['output']['std1']) for sim in sims],
+#        ['Bias $\hat{\Delta}_2$            '] + [fl(sim['output']['bias2']) for sim in sims],
         [r'$T^{-1}\sum_{t=1}^{T}N_{\phi,t}$ '] + [fl(np.mean(sim['output']['avg_iterations'])) for sim in sims],
         ['Average Run Time (s)             '] + [fl(sim['output']['average_time']) for sim in sims],
 ]

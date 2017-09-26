@@ -4,7 +4,7 @@ module class_TemperedParticleFilter
   use fortress_bayesian_model_t, only: fortress_ss_model
   use fortress_particles_t, only: fortress_particles
   use fortress_random_t, only: fortress_random
- 
+  use fortress_linalg, only: cholesky 
   use omp_lib
 
   use json_module, only: json_value, json_core
@@ -102,6 +102,8 @@ contains
    
     double precision :: psi_new, psi_min, psi_old, dessx, scale, aa
  
+    double precision :: sigma_mu(ppf%m%neps), sigma_var(ppf%m%neps, ppf%m%neps), shocks_new2(ppf%m%neps,ppf%npart)
+
     integer :: total_stages, explode_count
 
     
@@ -134,7 +136,6 @@ contains
  
     randu = ppf%rng%uniform_rvs(ppf%m%T*ppf%JMAX, 1)
  
- 
     ! initialize part
     old_local = fortress_particles(nvars=ppf%m%ns, npart=ppf%npart)
     new_local = fortress_particles(nvars=ppf%m%ns, npart=ppf%npart)
@@ -158,32 +159,31 @@ contains
  
           old_local%particles(:,j) = ppf%m%policy_function(old_local%particles(:,j-1), shocks(:,j))
           ! check for explosions
-          if ( isnan(sum(old_local%particles(:,j))) ) then
-             j = max(j-3, 2)
-             shocks = ppf%rng%norm_rvs(ppf%m%neps, ppf%npart)
-             explode_count = explode_count + 1
+          ! if ( isnan(sum(old_local%particles(:,j))) ) then
+          !    j = max(j-3, 2)
+          !    shocks = ppf%rng%norm_rvs(ppf%m%neps, ppf%npart)
+          !    explode_count = explode_count + 1
  
-             if (explode_count > 1) then
-                !print*,'particle',j,'explodes on rank',rank
+          !    if (explode_count > 1) then
+          !       !print*,'particle',j,'explodes on rank',rank
  
-                old_local%particles(:,j-1) = 0.0d0
-                do k = 1, ppf%m%ns
-                   old_local%particles(k,j-1) = endogsteady(k)
-                end do
-              end if
-          else
-             j = j + 1
-             explode_count = 1
-          end if
- 
+          !       old_local%particles(:,j-1) = 0.0d0
+          !       do k = 1, ppf%m%ns
+          !          old_local%particles(k,j-1) = endogsteady(k)
+          !       end do
+          !     end if
+          ! else
+          !    j = j + 1
+          !    explode_count = 1
+          ! end if
+          j = j + 1
        end do
     end do
- 
  
     ! second initialization
     do t = 1, ppf%initialization_T
        shocks = ppf%rng%norm_rvs(ppf%m%neps, ppf%npart)
- 
+       
        !$OMP PARALLEL DO PRIVATE(j)
        do j = 1, ppf%npart
           new_local%particles(:,j) = ppf%m%policy_function(old_local%particles(:,j), shocks(:,j))
@@ -191,7 +191,6 @@ contains
        !$OMP END PARALLEL DO
        old_local = new_local
     end do
- 
     if (write_states) then
        call json%create_object(fcst_states, 'fcst_states')
        call json%add(json_states, fcst_states)
@@ -206,7 +205,6 @@ contains
        call json%add(json_states, mean_filtered_states)
     end if
 
-
     ! the particle filter
     total_stages = 0
     do t = 1, ppf%m%T
@@ -214,7 +212,7 @@ contains
        converged = .false.
  
        psi_old = 0.00d0
-       psi_min = 0.001d0
+       psi_min = 0.0001d0
  
        ! draw shocks and regimes
        shocks = ppf%rng%norm_rvs(ppf%m%neps, ppf%npart)
@@ -237,19 +235,19 @@ contains
        do while (.not. converged)
 
 
-          if (write_states .and. (t==24)) then
-             write(chart, '(I3.3)') t
-             call json%create_object(fcst_states_t, chart)
-             call json%add(fcst_states, fcst_states_t)
-             call json%add(fcst_states_t, 'weights', new_local%weights)
+          ! if (write_states .and. (t==24)) then
+          !    write(chart, '(I3.3)') t
+          !    call json%create_object(fcst_states_t, chart)
+          !    call json%add(fcst_states, fcst_states_t)
+          !    call json%add(fcst_states_t, 'weights', new_local%weights)
 
-             do j = 1, new_local%nvars
-                write(chart, '(I3.3)') j
-                call json%add(fcst_states_t, 'var '//trim(chart), new_local%particles(j,:))
-             end do
-             nullify(fcst_states_t)
+          !    do j = 1, new_local%nvars
+          !       write(chart, '(I3.3)') j
+          !       call json%add(fcst_states_t, 'var '//trim(chart), new_local%particles(j,:))
+          !    end do
+          !    nullify(fcst_states_t)
 
-          end if
+          ! end if
 
 
 
@@ -266,6 +264,7 @@ contains
           wt_kernel = incwt
           ess0 = psi_ess(psi_min, psi_old, wt_kernel, ppf%npart, ppf%rstar)
           ess1 = psi_ess(1.0d0, psi_old, wt_kernel, ppf%npart, ppf%rstar)
+
           if ((ess1 < 0.0d0) .or. (ppf%type=='bootstrap') .or. (ppf%type=='resample')) then
              psi_new = 1.0d0
              converged = .true.
@@ -340,19 +339,25 @@ contains
           if (ppf%type /= 'bootstrap') then
              nintmh = ppf%nintmh
 
-             !scale = 0.3d0
+             ! call compute_mean_and_variance(sigma_mu, sigma_var, shocks, ppf%m%neps, ppf%npart)
+             ! call cholesky(sigma_var, k)
+
+             
+             
              do k = 1, nintmh
-                shocks_new = ppf%rng%norm_rvs(ppf%m%neps, ppf%npart)
-                shocks_new = shocks_new * scale + shocks
+                shocks_new2 = ppf%rng%norm_rvs(ppf%m%neps, ppf%npart)
+                shocks_new = shocks + scale * shocks_new2
+                ! call dgemm('n','n',ppf%m%neps,ppf%npart,ppf%m%neps,scale,sigma_var,&
+                !             ppf%m%neps,shocks_new2,ppf%m%neps,1.0_wp,shocks_new,ppf%m%neps)
 
                 randu2 = ppf%rng%uniform_rvs(ppf%npart, 1)
-
                 acpt = 0
 
                 !$OMP PARALLEL DO PRIVATE(j, pyn0, st_new, pyn1, pr_ratio, alp)
                 do j = 1, ppf%npart
 
                    pyn0 = ppf%m%logpdfy_kernel(t, new_local%particles(:,j), old_local%particles(:,j), para)
+
                    st_new = ppf%m%policy_function(old_local%particles(:,j), shocks_new(:,j))
                    pyn1 = ppf%m%logpdfy_kernel(t, st_new, old_local%particles(:,j), para)
 
@@ -367,13 +372,14 @@ contains
 
                 end do
                 !$OMP END PARALLEL DO
-
-                !if (sum(acpt)/(1.0d0*ppf%npart)>0.40d0) scale = scale*1.1d0
-                !if (sum(acpt)/(1.0d0*ppf%npart)<0.40d0) scale = scale*0.9d0
+                
+                !if (sum(acpt)/(1.0d0*ppf%npart)>0.25d0) scale = scale*1.1d0
+                !if (sum(acpt)/(1.0d0*ppf%npart)<0.25d0) scale = scale*0.9d0
                 aa = sum(acpt)/(1.0d0*ppf%npart)
-                !scale = (0.90d0 + 0.20d0 * exp(50.0d0*(aa-0.40d0)) / (1.0d0 + exp(50.0d0*(aa-0.40d0)))) * scale
+                !print*,aa,sum(acpt),ppf%npart
+                !scale = (0.90d0 + 0.20d0 * exp(100.0d0*(aa-0.25d0)) / (1.0d0 + exp(100.0d0*(aa-0.25d0)))) * scale
                 scale = (0.95d0 + 0.10d0 * exp(20.0d0*(aa-0.40d0)) / (1.0d0 + exp(20.0d0*(aa-0.40d0)))) * scale
-                !print*,scale
+                print*,t,phi_j,scale
              end do
 
 
@@ -382,18 +388,18 @@ contains
  
  
           total_stages = total_stages + 1
-          if (write_states .and. (t==24)) then
-             write(charphi, '(f8.6)') phi_new
-             call json%create_object(tempered_states_t_j, charphi)
-             call json%add(tempered_states_t, tempered_states_t_j)
-             call json%add(tempered_states_t_j, 'weights', new_local%weights)
+          ! if (write_states .and. (t==24)) then
+          !    write(charphi, '(f8.6)') phi_new
+          !    call json%create_object(tempered_states_t_j, charphi)
+          !    call json%add(tempered_states_t, tempered_states_t_j)
+          !    call json%add(tempered_states_t_j, 'weights', new_local%weights)
 
-             do j = 1, new_local%nvars
-                write(chart, '(I3.3)') j
-                call json%add(tempered_states_t_j, 'var '//trim(chart), new_local%particles(j,:))
-             end do
-             nullify(tempered_states_t_j)
-          end if
+          !    do j = 1, new_local%nvars
+          !       write(chart, '(I3.3)') j
+          !       call json%add(tempered_states_t_j, 'var '//trim(chart), new_local%particles(j,:))
+          !    end do
+          !    nullify(tempered_states_t_j)
+          ! end if
 
 
 
@@ -486,4 +492,36 @@ contains
       bisection = x1
  
     end function bisection
+
+  subroutine compute_mean_and_variance(mu, var, parasim, npara, nsim)
+
+    integer, intent(in) :: npara, nsim
+    real(wp), intent(in) :: parasim(npara, nsim)
+
+    real(wp), intent(out) :: mu(npara), var(npara, npara)
+
+    real(wp) :: R(npara, npara)
+    
+    integer :: j
+
+    mu = 0.0_wp
+    var = 0.0_wp
+    do j = 1, nsim
+       mu = mu + parasim(:,j)
+    end do
+    mu = mu / nsim
+
+    do j = 1, nsim
+       R = 0.0_wp
+       call dger(npara, npara, 1.0_wp, parasim(:,j), 1, parasim(:, j), 1, R, npara)
+       var = var + R
+
+    end do
+    var = var / nsim
+
+    call dger(npara, npara, -1.0_wp, mu, 1, mu, 1, var, npara)
+
+    !print*,mu
+  end subroutine compute_mean_and_variance
+
 end module class_TemperedParticleFilter

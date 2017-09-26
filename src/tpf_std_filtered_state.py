@@ -21,6 +21,7 @@ var_names = ['c', 'ppi', 'R', 'z', 'y', 'g', 'ylag', 'Eppi', 'Ec', 'Ey', 'Ez']
 stds = []
 means = []
 args = parser.parse_args()
+
 for sim_file in tqdm.tqdm(args.simulations):
     with open(sim_file) as sim:
         results = json.load(sim)
@@ -56,10 +57,3 @@ with saved_figure(args.output) as (fig,ax):
 
     despine()
 
-
-# with saved_figure() as (fig,ax):
-    
-#     for i, mean in enumerate(means):
-#         mean.y.plot(ax=ax, linewidth=5, color=cp[i])
-
-#         ax.legend(['BSPF', 'TPF(r*=2)', 'TPF])

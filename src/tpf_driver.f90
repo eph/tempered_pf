@@ -148,7 +148,7 @@ program tpf_driver
 
   tpf = TemperedParticleFilter(m, npart=npart, seed=seed, rstar=rstar)
   tpf%type = type
-
+  tpf%nintmh = nintmh
 
   allocate(pf_liks(nsim), avg_iterations(nsim))
   call system_clock(count_rate=rate)
